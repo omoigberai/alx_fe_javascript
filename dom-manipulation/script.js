@@ -15,7 +15,7 @@ if (savedQuotes && Array.isArray(savedQuotes)) {
 }
 
 // Select DOM elements
-const categorySelect = document.getElementById("categorySelect");
+const categoryFilter = document.getElementById("categoryFilter");
 const quoteDisplay = document.getElementById("quoteDisplay");
 const newQuoteBtn = document.getElementById("newQuote");
 
@@ -24,21 +24,30 @@ const newQuoteBtn = document.getElementById("newQuote");
 // Populate the category dropdown dynamically
 function populateCategories() {
   const categories = ["All Categories", ...new Set(quotes.map(q => q.category))];
-  categorySelect.innerHTML = "";
+  categoryFilter.innerHTML = "";
   categories.forEach(category => {
     const option = document.createElement("option");
     option.value = category.toLowerCase();
     option.textContent = category;
-    categorySelect.appendChild(option);
+    categoryFilter.appendChild(option);
   });
+
+  // ✅ Restore last selected filter from localStorage
+  const savedFilter = localStorage.getItem("selectedCategory");
+  if (savedFilter && categories.map(c => c.toLowerCase()).includes(savedFilter)) {
+    categoryFilter.value = savedFilter;
+  }
 }
 
-// Display a random quote (filtered by category)
-function showRandomQuote() {
-  const selectedCategory = categorySelect.value;
-  const filteredQuotes = selectedCategory === "all categories"
-    ? quotes
-    : quotes.filter(q => q.category.toLowerCase() === selectedCategory);
+// Filter and display quotes based on selected category
+function filterQuotes() {
+  const selectedCategory = categoryFilter.value;
+  localStorage.setItem("selectedCategory", selectedCategory); // ✅ Remember filter choice
+
+  const filteredQuotes =
+    selectedCategory === "all" || selectedCategory === "all categories"
+      ? quotes
+      : quotes.filter(q => q.category.toLowerCase() === selectedCategory);
 
   if (filteredQuotes.length === 0) {
     quoteDisplay.textContent = "No quotes found for this category.";
@@ -47,9 +56,7 @@ function showRandomQuote() {
 
   const randomQuote = filteredQuotes[Math.floor(Math.random() * filteredQuotes.length)];
   quoteDisplay.textContent = randomQuote.text;
-
-  // ✅ Save the last shown quote so it can be restored on refresh
-  localStorage.setItem("lastQuote", JSON.stringify(randomQuote));
+  localStorage.setItem("lastQuote", JSON.stringify(randomQuote)); // ✅ Save last shown quote
 }
 
 // Dynamically create the "Add Quote" form
@@ -96,24 +103,7 @@ function addQuote(quoteInput, categoryInput) {
   alert("Quote added successfully!");
 }
 
-// ====== EVENT LISTENERS ======
-newQuoteBtn.addEventListener("click", showRandomQuote);
-categorySelect.addEventListener("change", showRandomQuote);
-
-// ====== INITIALIZATION ======
-populateCategories();
-
-// ✅ Restore the last shown quote after refresh, if available
-const lastQuote = JSON.parse(localStorage.getItem("lastQuote"));
-if (lastQuote) {
-  quoteDisplay.textContent = lastQuote.text;
-} else {
-  showRandomQuote();
-}
-
-// Create the dynamic form
-createAddQuoteForm();
-// ====== EXPORT FUNCTION (with Blob) ======
+// ====== EXPORT FUNCTION ======
 function exportQuotes() {
   const blob = new Blob([JSON.stringify(quotes, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -128,6 +118,7 @@ function exportQuotes() {
 }
 
 document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
+
 // ====== IMPORT FUNCTION ======
 document.getElementById("importQuotes").addEventListener("change", function (event) {
   const file = event.target.files[0];
@@ -141,7 +132,7 @@ document.getElementById("importQuotes").addEventListener("change", function (eve
         quotes = importedQuotes;
         localStorage.setItem("quotes", JSON.stringify(quotes));
         populateCategories();
-        showRandomQuote();
+        filterQuotes();
         alert("Quotes imported successfully!");
       } else {
         alert("Invalid file format. Please upload a JSON array of quotes.");
@@ -153,3 +144,12 @@ document.getElementById("importQuotes").addEventListener("change", function (eve
 
   reader.readAsText(file);
 });
+
+// ====== EVENT LISTENERS ======
+newQuoteBtn.addEventListener("click", filterQuotes);
+categoryFilter.addEventListener("change", filterQuotes);
+
+// ====== INITIALIZATION ======
+populateCategories();
+filterQuotes();
+createAddQuoteForm();
