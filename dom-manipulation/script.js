@@ -247,3 +247,34 @@ document.body.appendChild(manualSyncButton);
 
 // Initial sync
 fetchQuotesFromServer();
+// ====== MANUAL SYNC FUNCTION ======
+// This sends local quotes to the server, then refreshes local data
+async function syncQuotes() {
+  try {
+    syncStatus.textContent = "🔁 Uploading local quotes to server...";
+
+    // POST local quotes to server
+    await fetch(SERVER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(quotes),
+    });
+
+    // Fetch server updates after upload
+    await fetchQuotesFromServer();
+
+    syncStatus.textContent = "✅ Quotes synced successfully with server";
+  } catch (error) {
+    console.error("Error during sync:", error);
+    syncStatus.textContent = "⚠️ Sync failed";
+  }
+}
+
+// Add Sync Now button for manual syncing
+const syncNowButton = document.createElement("button");
+syncNowButton.textContent = "Sync Quotes";
+syncNowButton.style.marginTop = "10px";
+syncNowButton.onclick = syncQuotes;
+document.body.appendChild(syncNowButton);
