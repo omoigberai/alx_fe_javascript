@@ -15,7 +15,7 @@ if (savedQuotes && Array.isArray(savedQuotes)) {
 }
 
 // Select DOM elements
-const categoryFilter = document.getElementById("categoryFilter");
+const categorySelect = document.getElementById("categoryFilter");
 const quoteDisplay = document.getElementById("quoteDisplay");
 const newQuoteBtn = document.getElementById("newQuote");
 
@@ -24,30 +24,34 @@ const newQuoteBtn = document.getElementById("newQuote");
 // Populate the category dropdown dynamically
 function populateCategories() {
   const categories = ["All Categories", ...new Set(quotes.map(q => q.category))];
-  categoryFilter.innerHTML = "";
+  categorySelect.innerHTML = "";
   categories.forEach(category => {
     const option = document.createElement("option");
     option.value = category.toLowerCase();
     option.textContent = category;
-    categoryFilter.appendChild(option);
+    categorySelect.appendChild(option);
   });
 
-  // ✅ Restore last selected filter from localStorage
-  const savedFilter = localStorage.getItem("selectedCategory");
-  if (savedFilter && categories.map(c => c.toLowerCase()).includes(savedFilter)) {
-    categoryFilter.value = savedFilter;
+  // Restore last selected category from localStorage
+  const lastCategory = localStorage.getItem("lastCategory");
+  if (lastCategory) {
+    categorySelect.value = lastCategory;
   }
 }
 
-// Filter and display quotes based on selected category
+// Filter and show quotes based on selected category
 function filterQuotes() {
-  const selectedCategory = categoryFilter.value;
-  localStorage.setItem("selectedCategory", selectedCategory); // ✅ Remember filter choice
+  const selectedCategory = categorySelect.value;
+  localStorage.setItem("lastCategory", selectedCategory);
+  showRandomQuote();
+}
 
-  const filteredQuotes =
-    selectedCategory === "all" || selectedCategory === "all categories"
-      ? quotes
-      : quotes.filter(q => q.category.toLowerCase() === selectedCategory);
+// Display a random quote (filtered by category)
+function showRandomQuote() {
+  const selectedCategory = categorySelect.value;
+  const filteredQuotes = selectedCategory === "all categories"
+    ? quotes
+    : quotes.filter(q => q.category.toLowerCase() === selectedCategory);
 
   if (filteredQuotes.length === 0) {
     quoteDisplay.textContent = "No quotes found for this category.";
@@ -56,7 +60,9 @@ function filterQuotes() {
 
   const randomQuote = filteredQuotes[Math.floor(Math.random() * filteredQuotes.length)];
   quoteDisplay.textContent = randomQuote.text;
-  localStorage.setItem("lastQuote", JSON.stringify(randomQuote)); // ✅ Save last shown quote
+
+  // ✅ Save the last shown quote so it can be restored on refresh
+  localStorage.setItem("lastQuote", JSON.stringify(randomQuote));
 }
 
 // Dynamically create the "Add Quote" form
@@ -103,23 +109,18 @@ function addQuote(quoteInput, categoryInput) {
   alert("Quote added successfully!");
 }
 
-// ====== EXPORT FUNCTION ======
+// ====== EXPORT FUNCTION (Download Quotes as JSON) ======
 function exportQuotes() {
   const blob = new Blob([JSON.stringify(quotes, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement("a");
   a.href = url;
   a.download = "quotes.json";
   a.click();
-
-  // Clean up the object URL after download
   URL.revokeObjectURL(url);
 }
 
-document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
-
-// ====== IMPORT FUNCTION ======
+// ====== IMPORT FUNCTION (Upload Quotes JSON) ======
 document.getElementById("importQuotes").addEventListener("change", function (event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -132,7 +133,7 @@ document.getElementById("importQuotes").addEventListener("change", function (eve
         quotes = importedQuotes;
         localStorage.setItem("quotes", JSON.stringify(quotes));
         populateCategories();
-        filterQuotes();
+        showRandomQuote();
         alert("Quotes imported successfully!");
       } else {
         alert("Invalid file format. Please upload a JSON array of quotes.");
@@ -146,19 +147,31 @@ document.getElementById("importQuotes").addEventListener("change", function (eve
 });
 
 // ====== EVENT LISTENERS ======
-newQuoteBtn.addEventListener("click", filterQuotes);
-categoryFilter.addEventListener("change", filterQuotes);
+newQuoteBtn.addEventListener("click", showRandomQuote);
+categorySelect.addEventListener("change", filterQuotes);
+document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
 
 // ====== INITIALIZATION ======
 populateCategories();
-filterQuotes();
+
+// ✅ Restore the last shown quote after refresh, if available
+const lastQuote = JSON.parse(localStorage.getItem("lastQuote"));
+if (lastQuote) {
+  quoteDisplay.textContent = lastQuote.text;
+} else {
+  showRandomQuote();
+}
+
+// Create the dynamic form
 createAddQuoteForm();
+
+
 // ====== SERVER SYNC & CONFLICT HANDLING ======
 
-// Simulated server URL (JSONPlaceholder)
+// Simulated server URL
 const SERVER_URL = "https://jsonplaceholder.typicode.com/posts";
 
-// Create a small sync status banner
+// Create sync status indicator
 const syncStatus = document.createElement("div");
 syncStatus.style.position = "fixed";
 syncStatus.style.bottom = "10px";
@@ -171,14 +184,14 @@ syncStatus.style.fontSize = "0.9em";
 syncStatus.textContent = "🔄 Sync: Idle";
 document.body.appendChild(syncStatus);
 
-// Fetch quotes from the server
-async function fetchServerQuotes() {
+// ✅ REQUIRED FUNCTION NAME (as per your task)
+async function fetchQuotesFromServer() {
   try {
     syncStatus.textContent = "🔄 Syncing with server...";
     const response = await fetch(SERVER_URL);
     const serverData = await response.json();
 
-    // Simulate converting server data into quote objects
+    // Convert server data into quote format
     const serverQuotes = serverData.slice(0, 5).map(item => ({
       text: item.title,
       category: "Server"
@@ -192,11 +205,9 @@ async function fetchServerQuotes() {
   }
 }
 
-// Conflict resolution logic
+// Conflict resolution: server data takes precedence
 function resolveConflicts(serverQuotes) {
   let updated = false;
-
-  // Create a map for easy lookup
   const localMap = new Map(quotes.map(q => [q.text.toLowerCase(), q]));
 
   serverQuotes.forEach(serverQuote => {
@@ -205,7 +216,6 @@ function resolveConflicts(serverQuotes) {
       quotes.push(serverQuote);
       updated = true;
     } else {
-      // Conflict resolution: server version wins
       const localQuote = localMap.get(key);
       if (localQuote.category !== serverQuote.category) {
         localQuote.category = serverQuote.category;
@@ -218,19 +228,19 @@ function resolveConflicts(serverQuotes) {
     localStorage.setItem("quotes", JSON.stringify(quotes));
     populateCategories();
     filterQuotes();
-    alert("Quotes synced with server. Some conflicts were resolved using server data.");
+    alert("Quotes synced with server — conflicts resolved.");
   }
 }
 
-// Periodic sync (every 30 seconds)
-setInterval(fetchServerQuotes, 30000);
+// Periodic sync every 30 seconds
+setInterval(fetchQuotesFromServer, 30000);
 
-// Manual sync button (optional)
+// Manual sync button
 const manualSyncButton = document.createElement("button");
 manualSyncButton.textContent = "Sync Now";
 manualSyncButton.style.marginTop = "10px";
-manualSyncButton.onclick = fetchServerQuotes;
+manualSyncButton.onclick = fetchQuotesFromServer;
 document.body.appendChild(manualSyncButton);
 
 // Initial sync on load
-fetchServerQuotes();
+fetchQuotesFromServer();
