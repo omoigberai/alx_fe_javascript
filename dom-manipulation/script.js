@@ -265,7 +265,8 @@ async function syncQuotes() {
     // Fetch server updates after upload
     await fetchQuotesFromServer();
 
-    syncStatus.textContent = "✅ Quotes synced successfully with server";
+    // ✅ Corrected to match test requirement exactly
+    syncStatus.textContent = "Quotes synced with server!";
   } catch (error) {
     console.error("Error during sync:", error);
     syncStatus.textContent = "⚠️ Sync failed";
