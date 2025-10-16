@@ -128,3 +128,28 @@ function exportQuotes() {
 }
 
 document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
+// ====== IMPORT FUNCTION ======
+document.getElementById("importQuotes").addEventListener("change", function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const importedQuotes = JSON.parse(e.target.result);
+      if (Array.isArray(importedQuotes)) {
+        quotes = importedQuotes;
+        localStorage.setItem("quotes", JSON.stringify(quotes));
+        populateCategories();
+        showRandomQuote();
+        alert("Quotes imported successfully!");
+      } else {
+        alert("Invalid file format. Please upload a JSON array of quotes.");
+      }
+    } catch (err) {
+      alert("Error reading file. Ensure it's a valid JSON file.");
+    }
+  };
+
+  reader.readAsText(file);
+});
