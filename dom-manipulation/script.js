@@ -113,13 +113,18 @@ if (lastQuote) {
 
 // Create the dynamic form
 createAddQuoteForm();
-// ====== EXPORT FUNCTION ======
+// ====== EXPORT FUNCTION (with Blob) ======
 function exportQuotes() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(quotes, null, 2));
-  const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", "quotes.json");
-  downloadAnchor.click();
+  const blob = new Blob([JSON.stringify(quotes, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "quotes.json";
+  a.click();
+
+  // Clean up the object URL after download
+  URL.revokeObjectURL(url);
 }
 
 document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
