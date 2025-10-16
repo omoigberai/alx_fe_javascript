@@ -113,3 +113,13 @@ if (lastQuote) {
 
 // Create the dynamic form
 createAddQuoteForm();
+// ====== EXPORT FUNCTION ======
+function exportQuotes() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(quotes, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", "quotes.json");
+  downloadAnchor.click();
+}
+
+document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
