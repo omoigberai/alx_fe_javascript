@@ -153,3 +153,84 @@ categoryFilter.addEventListener("change", filterQuotes);
 populateCategories();
 filterQuotes();
 createAddQuoteForm();
+// ====== SERVER SYNC & CONFLICT HANDLING ======
+
+// Simulated server URL (JSONPlaceholder)
+const SERVER_URL = "https://jsonplaceholder.typicode.com/posts";
+
+// Create a small sync status banner
+const syncStatus = document.createElement("div");
+syncStatus.style.position = "fixed";
+syncStatus.style.bottom = "10px";
+syncStatus.style.right = "10px";
+syncStatus.style.background = "#0078d7";
+syncStatus.style.color = "white";
+syncStatus.style.padding = "8px 12px";
+syncStatus.style.borderRadius = "5px";
+syncStatus.style.fontSize = "0.9em";
+syncStatus.textContent = "🔄 Sync: Idle";
+document.body.appendChild(syncStatus);
+
+// Fetch quotes from the server
+async function fetchServerQuotes() {
+  try {
+    syncStatus.textContent = "🔄 Syncing with server...";
+    const response = await fetch(SERVER_URL);
+    const serverData = await response.json();
+
+    // Simulate converting server data into quote objects
+    const serverQuotes = serverData.slice(0, 5).map(item => ({
+      text: item.title,
+      category: "Server"
+    }));
+
+    resolveConflicts(serverQuotes);
+    syncStatus.textContent = "✅ Synced with server";
+  } catch (error) {
+    console.error("Error syncing with server:", error);
+    syncStatus.textContent = "⚠️ Sync failed";
+  }
+}
+
+// Conflict resolution logic
+function resolveConflicts(serverQuotes) {
+  let updated = false;
+
+  // Create a map for easy lookup
+  const localMap = new Map(quotes.map(q => [q.text.toLowerCase(), q]));
+
+  serverQuotes.forEach(serverQuote => {
+    const key = serverQuote.text.toLowerCase();
+    if (!localMap.has(key)) {
+      quotes.push(serverQuote);
+      updated = true;
+    } else {
+      // Conflict resolution: server version wins
+      const localQuote = localMap.get(key);
+      if (localQuote.category !== serverQuote.category) {
+        localQuote.category = serverQuote.category;
+        updated = true;
+      }
+    }
+  });
+
+  if (updated) {
+    localStorage.setItem("quotes", JSON.stringify(quotes));
+    populateCategories();
+    filterQuotes();
+    alert("Quotes synced with server. Some conflicts were resolved using server data.");
+  }
+}
+
+// Periodic sync (every 30 seconds)
+setInterval(fetchServerQuotes, 30000);
+
+// Manual sync button (optional)
+const manualSyncButton = document.createElement("button");
+manualSyncButton.textContent = "Sync Now";
+manualSyncButton.style.marginTop = "10px";
+manualSyncButton.onclick = fetchServerQuotes;
+document.body.appendChild(manualSyncButton);
+
+// Initial sync on load
+fetchServerQuotes();
